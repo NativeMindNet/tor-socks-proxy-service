@@ -1,0 +1,83 @@
+{
+  "outbounds" : [
+    {
+      "protocol" : "vmess",
+      "settings" : {
+        "vnext" : [
+          {
+            "port" : 8080,
+            "address" : "8.218.102.226",
+            "users" : [
+              {
+                "id" : "0631db67-011b-3d2e-821b-192f6679edbc",
+                "alterId" : 0,
+                "security" : "auto"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings" : {
+        "security" : "none",
+        "network" : "ws",
+        "sockopt" : null,
+        "wsSettings" : {
+          "path" : "\/download",
+          "headers" : {
+            "Host" : "hk1-7-news.1q2.ru"
+          }
+        }
+      },
+      "tag" : "proxy"
+    },
+    {
+      "protocol" : "freedom",
+      "tag" : "direct",
+      "settings" : null
+    },
+    {
+      "tag" : "block",
+      "settings" : null,
+      "protocol" : "blackhole"
+    }
+  ],
+  "routing" : {
+    "domainStrategy" : "AsIs",
+    "rules" : [
+      {
+        "outboundTag" : "direct",
+        "inboundTag" : [
+          "socks-direct"
+        ]
+      }
+    ]
+  },
+  "inbounds" : [
+    {
+      "tag" : "socks-in",
+      "protocol" : "socks",
+      "port" : 10814,
+      "settings" : {
+        "auth" : "noauth",
+        "udp" : true
+      },
+      "sniffing" : {
+        "enabled" : true,
+        "destOverride" : [
+          "http",
+          "tls"
+        ],
+        "routeOnly" : false,
+        "excludedDomains" : [
+
+        ],
+        "metadataOnly" : false
+      },
+      "listen" : "0.0.0.0"
+    }
+  ],
+  "log" : {
+    "loglevel" : "Debug",
+    "dnsLog" : true
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "log" : {
+    "loglevel" : "Debug",
+    "dnsLog" : true
+  },
+  "inbounds" : [
+    {
+      "settings" : {
+        "auth" : "noauth",
+        "udp" : true
+      },
+      "listen" : "0.0.0.0",
+      "port" : 10813,
+      "protocol" : "socks",
+      "sniffing" : {
+        "routeOnly" : false,
+        "metadataOnly" : false,
+        "excludedDomains" : [
+
+        ],
+        "destOverride" : [
+          "tls",
+          "http"
+        ],
+        "enabled" : true
+      },
+      "tag" : "socks-in"
+    }
+  ],
+  "outbounds" : [
+    {
+      "protocol" : "vmess",
+      "settings" : {
+        "vnext" : [
+          {
+            "address" : "35.88.59.168",
+            "port" : 8080,
+            "users" : [
+              {
+                "security" : "auto",
+                "alterId" : 0,
+                "id" : "139cf07a-bbb7-32f0-8b13-b2848b232119"
+              }
+            ]
+          }
+        ]
+      },
+      "tag" : "proxy",
+      "streamSettings" : {
+        "security" : "none",
+        "wsSettings" : {
+          "path" : "\/download",
+          "headers" : {
+            "Host" : "u2.1q2.ru"
+          }
+        },
+        "network" : "ws"
+      }
+    },
+    {
+      "protocol" : "freedom",
+      "settings" : null,
+      "tag" : "direct"
+    },
+    {
+      "tag" : "block",
+      "protocol" : "blackhole",
+      "settings" : null
+    }
+  ]
+}

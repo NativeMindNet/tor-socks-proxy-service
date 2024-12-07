@@ -1,0 +1,89 @@
+{
+  "routing" : {
+    "domainStrategy" : "AsIs",
+    "rules" : [
+      {
+        "outboundTag" : "direct",
+        "inboundTag" : [
+          "socks-direct"
+        ]
+      }
+    ]
+  },
+  "inbounds" : [
+    {
+      "tag" : "socks-in",
+      "listen" : "0.0.0.0",
+      "settings" : {
+        "udp" : true,
+        "auth" : "noauth"
+      },
+      "port" : 10812,
+      "protocol" : "socks",
+      "sniffing" : {
+        "enabled" : true,
+        "metadataOnly" : false,
+        "destOverride" : [
+          "http",
+          "tls"
+        ],
+        "routeOnly" : false,
+        "excludedDomains" : [
+
+        ]
+      }
+    }
+  ],
+  "outbounds" : [
+    {
+      "protocol" : "vless",
+      "streamSettings" : {
+        "tcpSettings" : {
+          "header" : {
+            "type" : "none"
+          }
+        },
+        "sockopt" : null,
+        "security" : "reality",
+        "realitySettings" : {
+          "shortId" : "13411028",
+          "spiderX" : "\/",
+          "fingerprint" : "firefox",
+          "show" : false,
+          "publicKey" : "OIt5_uoS-pnt36XHBK4wkafziSHJzOBWCPX2YsM6mio",
+          "serverName" : "booking.com"
+        },
+        "network" : "tcp"
+      },
+      "settings" : {
+        "vnext" : [
+          {
+            "users" : [
+              {
+                "id" : "86a45c33-b4d6-46a0-99f8-c3dc81ec5507",
+                "encryption" : "none"
+              }
+            ],
+            "port" : 443,
+            "address" : "194.67.91.82"
+          }
+        ]
+      },
+      "tag" : "proxy"
+    },
+    {
+      "tag" : "direct",
+      "protocol" : "freedom",
+      "settings" : null
+    },
+    {
+      "settings" : null,
+      "tag" : "block",
+      "protocol" : "blackhole"
+    }
+  ],
+  "log" : {
+    "loglevel" : "Debug",
+    "dnsLog" : true
+  }
+}

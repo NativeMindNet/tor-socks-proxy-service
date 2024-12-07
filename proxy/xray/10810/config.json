@@ -1,0 +1,83 @@
+{
+  "outbounds" : [
+    {
+      "tag" : "proxy",
+      "protocol" : "vmess",
+      "settings" : {
+        "vnext" : [
+          {
+            "users" : [
+              {
+                "id" : "139cf07a-bbb7-32f0-8b13-b2848b232119",
+                "security" : "auto",
+                "alterId" : 0
+              }
+            ],
+            "port" : 8080,
+            "address" : "18.183.169.157"
+          }
+        ]
+      },
+      "streamSettings" : {
+        "wsSettings" : {
+          "headers" : {
+            "Host" : "jp01.1q2.ru"
+          },
+          "path" : "\/download"
+        },
+        "network" : "ws",
+        "sockopt" : null,
+        "security" : "none"
+      }
+    },
+    {
+      "protocol" : "freedom",
+      "tag" : "direct",
+      "settings" : null
+    },
+    {
+      "tag" : "block",
+      "protocol" : "blackhole",
+      "settings" : null
+    }
+  ],
+  "inbounds" : [
+    {
+      "sniffing" : {
+        "excludedDomains" : [
+
+        ],
+        "metadataOnly" : false,
+        "routeOnly" : false,
+        "enabled" : true,
+        "destOverride" : [
+          "http",
+          "tls"
+        ]
+      },
+      "settings" : {
+        "auth" : "noauth",
+        "udp" : true
+      },
+      "tag" : "socks-in",
+      "listen" : "0.0.0.0",
+      "port" : 10810,
+      "protocol" : "socks"
+    }
+  ],
+  "routing" : {
+    "domainStrategy" : "AsIs",
+    "rules" : [
+      {
+        "inboundTag" : [
+          "socks-direct"
+        ],
+        "outboundTag" : "direct"
+      }
+    ]
+  },
+  "log" : {
+    "loglevel" : "Debug",
+    "dnsLog" : true
+  }
+}

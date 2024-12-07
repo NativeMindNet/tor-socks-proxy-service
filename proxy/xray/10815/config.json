@@ -1,0 +1,83 @@
+{
+  "routing" : {
+    "domainStrategy" : "AsIs",
+    "rules" : [
+      {
+        "inboundTag" : [
+          "socks-direct"
+        ],
+        "outboundTag" : "direct"
+      }
+    ]
+  },
+  "inbounds" : [
+    {
+      "protocol" : "socks",
+      "sniffing" : {
+        "excludedDomains" : [
+
+        ],
+        "metadataOnly" : false,
+        "destOverride" : [
+          "http",
+          "tls"
+        ],
+        "routeOnly" : false,
+        "enabled" : true
+      },
+      "settings" : {
+        "udp" : true,
+        "auth" : "noauth"
+      },
+      "tag" : "socks-in",
+      "listen" : "0.0.0.0",
+      "port" : 10815
+    }
+  ],
+  "log" : {
+    "loglevel" : "Debug",
+    "dnsLog" : true
+  },
+  "outbounds" : [
+    {
+      "tag" : "proxy",
+      "streamSettings" : {
+        "sockopt" : null,
+        "wsSettings" : {
+          "headers" : {
+            "Host" : "hk2-7-news.1q2.ru"
+          },
+          "path" : "\/download"
+        },
+        "network" : "ws",
+        "security" : "none"
+      },
+      "protocol" : "vmess",
+      "settings" : {
+        "vnext" : [
+          {
+            "address" : "8.210.51.94",
+            "port" : 8080,
+            "users" : [
+              {
+                "security" : "auto",
+                "alterId" : 0,
+                "id" : "0631db67-011b-3d2e-821b-192f6679edbc"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "settings" : null,
+      "tag" : "direct",
+      "protocol" : "freedom"
+    },
+    {
+      "protocol" : "blackhole",
+      "tag" : "block",
+      "settings" : null
+    }
+  ]
+}
