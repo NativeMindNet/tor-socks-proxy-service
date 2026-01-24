@@ -1,1 +1,0 @@
-./start_mac.sh 10809

@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  tor-proxy:
+    build:
+      context: ./docker/tor
+      dockerfile: Dockerfile
+    image: tor-proxy-image:latest
+    ports:
+      - "9050:9050"
+    volumes:
+      - ./docker/tor/test.torrc:/etc/tor/torrc
+    command: ["tor", "-f", "/etc/tor/torrc"]
+    restart: unless-stopped
+    networks:
+      - tor_manager_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 128M
+
+  node-discovery:
+    build:
+      context: .
+      dockerfile: docker/node-discovery/Dockerfile
+    image: node-discovery-image:latest
+    volumes:
+      - db_data:/app/db
+      - ./node_discovery.py:/app/node_discovery.py
+    restart: unless-stopped
+    networks:
+      - tor_manager_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    image: tor-manager-api-image:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - db_data:/app/db
+      - tor_configs_data:/etc/tor_configs
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - node-discovery
+    restart: unless-stopped
+    networks:
+      - tor_manager_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/console_templates'
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - tor_manager_network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    networks:
+      - tor_manager_network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - tor_manager_network
+
+networks:
+  tor_manager_network:
+    driver: bridge
+
+volumes:
+  db_data:
+  tor_configs_data:
+  prometheus_data:
+  grafana_data:
