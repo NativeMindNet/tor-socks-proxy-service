@@ -5,9 +5,9 @@ services:
     build:
       context: ./docker/tor
       dockerfile: Dockerfile
-    image: tor-proxy-image:latest
+    image: tor-proxy-image:${ENV_TAG:-latest}
     ports:
-      - "9050:9050"
+      - "${BIND_IP:-0.0.0.0}:${TOR_PORT:-9050}:9050"
     volumes:
       - ./docker/tor/test.torrc:/etc/tor/torrc
     command: ["tor", "-f", "/etc/tor/torrc"]
@@ -24,7 +24,7 @@ services:
     build:
       context: .
       dockerfile: docker/node-discovery/Dockerfile
-    image: node-discovery-image:latest
+    image: node-discovery-image:${ENV_TAG:-latest}
     volumes:
       - db_data:/app/db
       - ./node_discovery.py:/app/node_discovery.py
@@ -41,9 +41,9 @@ services:
     build:
       context: .
       dockerfile: docker/api/Dockerfile
-    image: tor-manager-api-image:latest
+    image: tor-manager-api-image:${ENV_TAG:-latest}
     ports:
-      - "8000:8000"
+      - "${BIND_IP:-0.0.0.0}:${API_PORT:-8000}:8000"
     volumes:
       - db_data:/app/db
       - tor_configs_data:/etc/tor_configs
@@ -70,7 +70,7 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/console_templates'
     ports:
-      - "9090:9090"
+      - "${BIND_IP:-0.0.0.0}:${PROMETHEUS_PORT:-9090}:9090"
     restart: unless-stopped
     networks:
       - tor_manager_network
@@ -78,18 +78,19 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3000:3000"
+      - "${BIND_IP:-0.0.0.0}:${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
     restart: unless-stopped
     networks:
       - tor_manager_network
 
   cadvisor:
+    profiles: ["linux"]
     image: gcr.io/cadvisor/cadvisor:latest
     volumes:
       - /:/rootfs:ro
@@ -97,7 +98,7 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     ports:
-      - "8080:8080"
+      - "${BIND_IP:-0.0.0.0}:${CADVISOR_PORT:-8080}:8080"
     restart: unless-stopped
     networks:
       - tor_manager_network
