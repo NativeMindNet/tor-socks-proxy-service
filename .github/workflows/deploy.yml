@@ -1,0 +1,155 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - prod
+      - dev
+      - stage
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - prod
+          - dev
+          - stage
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_name }}
+    runs-on:
+      - self-hosted
+      - ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "name=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate environment
+        run: |
+          echo "=== Environment Validation ==="
+
+          # Check DEPLOY_DIR is set
+          if [ -z "${DEPLOY_DIR}" ]; then
+            echo "::error::DEPLOY_DIR environment variable is not set on this runner"
+            echo "Please set DEPLOY_DIR in runner environment (e.g., ~/.bashrc or ~/.zshrc)"
+            exit 1
+          fi
+          echo "DEPLOY_DIR=${DEPLOY_DIR}"
+
+          # Set target directory
+          ENV_NAME="${{ steps.env.outputs.name }}"
+          TARGET_DIR="${DEPLOY_DIR}/${ENV_NAME}"
+          echo "TARGET_DIR=${TARGET_DIR}"
+
+          # Check target directory exists
+          if [ ! -d "${TARGET_DIR}" ]; then
+            echo "::error::Deploy directory does not exist: ${TARGET_DIR}"
+            echo "Please create it and add .env file"
+            exit 1
+          fi
+
+          # Check .env exists
+          if [ ! -f "${TARGET_DIR}/.env" ]; then
+            echo "::error::.env file not found in ${TARGET_DIR}"
+            echo "Please copy .env.example to ${TARGET_DIR}/.env and configure"
+            exit 1
+          fi
+
+          echo "Environment validation passed"
+
+      - name: Deploy
+        run: |
+          ENV_NAME="${{ steps.env.outputs.name }}"
+          TARGET_DIR="${DEPLOY_DIR}/${ENV_NAME}"
+
+          echo "=== Deploying to ${TARGET_DIR} ==="
+
+          # Copy files from repo (preserve .env and override)
+          echo "Copying files..."
+          cp docker-compose.yml "${TARGET_DIR}/"
+          cp .env.example "${TARGET_DIR}/"
+          cp -r docker/ "${TARGET_DIR}/"
+          cp -r api/ "${TARGET_DIR}/"
+          cp -r monitoring/ "${TARGET_DIR}/"
+
+          # Copy additional files if they exist
+          [ -f node_discovery.py ] && cp node_discovery.py "${TARGET_DIR}/"
+          [ -d db ] && cp -r db/ "${TARGET_DIR}/"
+
+          # Move to target directory
+          cd "${TARGET_DIR}"
+
+          # Detect OS for profile selection
+          echo "Detecting OS..."
+          if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            PROFILE_FLAG="--profile linux"
+            echo "OS: Linux (cadvisor will be started)"
+          else
+            PROFILE_FLAG=""
+            echo "OS: macOS/other (cadvisor will be skipped)"
+          fi
+
+          # Build images
+          echo "Building images..."
+          docker-compose build
+
+          # Stop current containers
+          echo "Stopping current containers..."
+          docker-compose down --remove-orphans || true
+
+          # Start new containers
+          echo "Starting containers..."
+          docker-compose ${PROFILE_FLAG} up -d
+
+          echo "Deploy completed"
+
+      - name: Health check
+        run: |
+          ENV_NAME="${{ steps.env.outputs.name }}"
+          TARGET_DIR="${DEPLOY_DIR}/${ENV_NAME}"
+
+          echo "=== Health Check ==="
+
+          # Wait for containers to start
+          sleep 10
+
+          # Show container status
+          cd "${TARGET_DIR}"
+          echo "Container status:"
+          docker-compose ps
+
+          # Count running containers (excluding cadvisor on macOS)
+          RUNNING=$(docker-compose ps --services --filter "status=running" 2>/dev/null | wc -l | tr -d ' ')
+          EXPECTED=5  # tor-proxy, node-discovery, api, prometheus, grafana
+
+          echo ""
+          echo "Running services: ${RUNNING}"
+          echo "Expected minimum: ${EXPECTED}"
+
+          if [ "${RUNNING}" -lt "${EXPECTED}" ]; then
+            echo "::warning::Only ${RUNNING} services running, expected at least ${EXPECTED}"
+            echo "Check logs with: docker-compose logs"
+          else
+            echo "All expected services are running"
+          fi
+
+          # Show recent logs summary
+          echo ""
+          echo "=== Recent logs (last 5 lines per service) ==="
+          for service in tor-proxy api node-discovery; do
+            echo "--- ${service} ---"
+            docker-compose logs --tail=5 ${service} 2>/dev/null || echo "(no logs)"
+          done

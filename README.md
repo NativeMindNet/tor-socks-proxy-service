@@ -125,6 +125,101 @@ To stop services without removing the volume:
 docker-compose down
 ```
 
+## CI/CD Deployment
+
+This project supports automated deployment via GitHub Actions to self-hosted runners on prod/dev/stage environments.
+
+### How It Works
+
+1. Push to `prod`, `dev`, or `stage` branch triggers deployment
+2. GitHub Actions runs on self-hosted runner with matching label
+3. Runner builds images locally and restarts containers
+4. Multiple environments can run on the same server (isolated by IP and project name)
+
+### Runner Setup
+
+#### Linux (Ubuntu)
+
+```bash
+# 1. Install GitHub Actions Runner
+# Follow: https://docs.github.com/en/actions/hosting-your-own-runners
+
+# 2. Register runner with environment label (e.g., "prod", "dev")
+./config.sh --url https://github.com/YOUR/REPO --token TOKEN --labels self-hosted,prod
+
+# 3. Set DEPLOY_DIR in runner environment
+echo 'export DEPLOY_DIR=/opt/tor-proxy' >> ~/.bashrc
+source ~/.bashrc
+
+# 4. Create deploy directories
+sudo mkdir -p /opt/tor-proxy/{prod,dev,stage}
+sudo chown -R $USER:$USER /opt/tor-proxy/
+
+# 5. Configure each environment
+cp .env.example /opt/tor-proxy/prod/.env
+# Edit .env: set COMPOSE_PROJECT_NAME, ENV_TAG, BIND_IP, etc.
+
+# 6. Start runner
+./run.sh  # or install as service
+```
+
+#### macOS
+
+```bash
+# 1. Install GitHub Actions Runner
+# Follow: https://docs.github.com/en/actions/hosting-your-own-runners
+
+# 2. Register runner with environment label (e.g., "stage")
+./config.sh --url https://github.com/YOUR/REPO --token TOKEN --labels self-hosted,stage
+
+# 3. Set DEPLOY_DIR in runner environment
+echo 'export DEPLOY_DIR=~/tor-proxy' >> ~/.zshrc
+source ~/.zshrc
+
+# 4. Create deploy directories
+mkdir -p ~/tor-proxy/{stage,dev}
+
+# 5. Configure environment
+cp .env.example ~/tor-proxy/stage/.env
+# Edit .env: set BIND_IP=127.0.0.1, etc.
+
+# 6. Start runner
+./run.sh
+```
+
+### Environment Configuration
+
+Each environment needs a `.env` file in its deploy directory. See `.env.example` for all options.
+
+**Example for multi-environment on same server:**
+
+| Environment | COMPOSE_PROJECT_NAME | BIND_IP | ENV_TAG |
+|-------------|---------------------|---------|---------|
+| prod | tor-proxy-prod | 10.0.0.1 | prod |
+| dev | tor-proxy-dev | 10.0.0.2 | dev |
+| stage (macOS) | tor-proxy-stage | 127.0.0.1 | stage |
+
+### Manual Deployment
+
+You can also trigger deployment manually from GitHub Actions UI using `workflow_dispatch`.
+
+### Logs
+
+View logs using Docker Compose:
+
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f api
+```
+
+### Platform Notes
+
+- **cadvisor** only works on Linux. On macOS it's automatically skipped.
+- Use `docker-compose --profile linux up -d` on Linux to include cadvisor.
+
 ## Development Notes
 
 -   **Hot Reloading:** The `api` and `node-discovery` services are configured to mount their respective Python scripts and `requirements.txt`. This allows for easier development as changes to these files will be reflected upon container restart or `uvicorn`'s hot-reloading (for the API).
