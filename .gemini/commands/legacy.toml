@@ -1,0 +1,299 @@
+description = "Legacy - Reverse Engineering Documentation from existing code."
+
+prompt = """
+---
+description: Legacy - Reverse Engineering Documentation.
+---
+
+# Legacy - Reverse Engineering Documentation
+
+Analyzes existing code and generates documentation (ADR/SDD/DDD/TDD/VDD flows) automatically.
+
+## Command: {{args}}
+
+```
+/legacy                              # BFS from project root
+/legacy src/auth                     # BFS from src/auth (analyze only this subtree)
+/legacy src/auth "JWT validation"    # DFS: focus on "JWT validation" within src/auth
+```
+
+### Mode Selection
+
+| Arguments | Mode | Behavior |
+|-----------|------|----------|
+| none | BFS | Full project analysis, breadth-first |
+| path only | BFS | Analyze subtree starting from path |
+| path + "comment" | DFS | Deep focus on comment topic within path |
+
+**Path** = WHERE to look for source code (starting point)
+**Comment** = WHAT to focus on (triggers DFS mode)
+
+---
+
+## Flow Type Detection - Module-First Approach
+
+**Critical**: Flows are per-module, not per-file-type. Tests and UI are attributes of modules, not separate entities.
+
+### Wrong Approach (file-type grouping)
+```
+tests/*.test.ts      -> tdd-all-tests     X
+components/*.tsx     -> vdd-all-ui        X
+```
+
+### Correct Approach (module-centric)
+```
+src/auth/
+  auth.service.ts  --+
+  auth.test.ts     --+-> ONE flow for auth module
+  LoginForm.tsx    --+   Type determined by PRIMARY PURPOSE
+  README.md        --+
+```
+
+### Module Detection Algorithm
+
+```
+1. IDENTIFY MODULE BOUNDARIES
+   - Directory with cohesive functionality
+   - Has entry point (index.ts, mod.rs, __init__.py)
+   - Clear single responsibility
+
+2. ANALYZE MODULE PURPOSE (primary driver)
+   - What problem does this module solve?
+   - Who is the primary consumer?
+   - What is the core deliverable?
+
+3. DETERMINE FLOW TYPE BY PURPOSE
+   Purpose: Internal service logic      -> SDD
+   Purpose: Client-facing feature       -> DDD
+   Purpose: Critical correctness        -> TDD (test-first is essential)
+   Purpose: User interface/experience   -> VDD (visual is primary)
+
+4. RECORD ATTRIBUTES (secondary)
+   - has_tests: true/false
+   - has_ui: true/false
+   - has_public_api: true/false
+   - has_docs: true/false
+```
+
+### Flow Type Decision Matrix
+
+| Primary Purpose | Has Tests | Has UI | Stakeholder-facing | -> Flow Type |
+|-----------------|-----------|--------|-------------------|-------------|
+| Internal logic | any | no | no | SDD |
+| Internal logic | any | yes | no | SDD + ui_components attribute |
+| Needs explanation to clients/execs | any | any | yes | DDD |
+| Correctness-critical | essential | any | any | TDD |
+| User experience | any | primary | any | VDD |
+
+---
+
+## ADR Auto-Detection
+
+### Constraining (choices already made)
+- Framework/library selections
+- Architectural patterns (MVC, hexagonal, etc.)
+- Database choices
+- API styles (REST, GraphQL, gRPC)
+- Authentication methods
+
+### Enabling (capabilities to support)
+- Extension points
+- Plugin systems
+- Configuration options
+- Feature flags
+- i18n/l10n support
+
+---
+
+## Execution Steps
+
+### Step 1: Initialize
+
+```
+1. Read flows/legacy/_status.md
+2. Determine mode (BFS/DFS) from arguments
+3. Set target path (root or specified)
+4. Set focus (comment if DFS)
+```
+
+### Step 2: Analyze (Incremental Understanding)
+
+**Critical**: Analysis structure reflects LOGICAL UNDERSTANDING, not filesystem.
+
+Files scattered across folders may belong to ONE logical module.
+AI builds a **model of understanding** that grows incrementally.
+
+```
+WRONG (mirror filesystem):
+flows/legacy/analysis/src/auth/jwt/_analysis.md  X
+
+RIGHT (logical structure):
+flows/legacy/analysis/
+  _graph.md                    # Understanding graph (grows)
+  modules/                     # By FUNCTION, not path
+    authentication.md          # src/auth + src/middleware/auth + ...
+    api-gateway.md             # src/api + src/routes + src/handlers
+    data-layer.md              # src/db + src/models + src/repositories
+  decisions/                   # Discovered ADR candidates
+    jwt-over-sessions.md
+  frontier/                    # Edge of exploration
+    unknown-utils.md           # Not yet understood
+```
+
+**Incremental Discovery Algorithm:**
+```
+function analyze():
+    1. SCAN: List project contents, identify entry points
+    2. HYPOTHESIZE: Form initial module hypotheses
+       - "This looks like authentication logic"
+       - "These files seem related to API handling"
+    3. EXPLORE: Read code, validate/refine hypotheses
+       - Merge files into logical modules
+       - Split if actually separate concerns
+    4. RECORD: Update analysis/modules/{name}.md
+       - Sources: [list of paths that form this module]
+       - Purpose: [what it does]
+       - Dependencies: [what it uses]
+    5. EXPAND FRONTIER: Identify unexplored areas
+    6. RECURSE: Go deeper into frontier items
+    7. SYNTHESIZE: Update _graph.md with relationships
+```
+
+**Recursion Control:**
+- Max iterations configurable (default: 10)
+- Stop at: node_modules, vendor, .git, etc.
+- Frontier shrinks each iteration
+- Done when: frontier empty OR max iterations
+
+### Step 3: Generate Flows
+
+For each discovered module:
+```
+1. Create flows/[type]-[name]/ directory
+2. Generate 01-requirements.md from validated understanding
+3. Generate 02-specifications.md from code analysis
+4. Generate 03-plan.md (empty, for future changes)
+5. Create _status.md with phase = REQUIREMENTS, status = DRAFT
+```
+
+### Step 4: Generate ADRs
+
+For each identified decision:
+```
+1. Create flows/adr-[NNN]-[name]/ directory
+2. Generate adr.md with:
+   - Context from code analysis
+   - Decision identified
+   - Consequences observed
+   - Type: constraining | enabling
+3. Create _status.md with phase = DRAFT
+```
+
+### Step 5: Generate Review List
+
+```
+1. Update flows/legacy/review.md
+2. List all created flows with confidence level
+3. List all created ADRs with confidence level
+4. List questions requiring clarification
+5. List frontier items still unexplored
+```
+
+---
+
+## Files - Dual Context
+
+Legacy works with its own files AND creates new flows:
+
+```
+flows/legacy/                          flows/[type]-[name]/  (created)
+  _status.md                             _status.md
+  log.md                                 01-requirements.md
+  analysis/                              02-specifications.md
+    _graph.md         # understanding    03-plan.md
+    modules/          # by logical function
+      authentication.md                flows/adr-[NNN]-[name]/  (created)
+      api-gateway.md                     adr.md
+      data-layer.md                      _status.md
+    decisions/        # ADR candidates
+      jwt-choice.md
+    frontier/         # unexplored areas
+      unknown-utils.md
+  mapping.md          # module -> flow mapping
+  review.md           # items for review
+```
+
+**Key Principle**: analysis/modules/ organized by FUNCTION, not by source path.
+One module file may reference many source paths.
+
+---
+
+## Idempotency & Upsert Semantics
+
+**Critical**: /legacy must be idempotent - running multiple times produces consistent results without duplicates.
+
+### Check-Before-Write Pattern
+
+For each identified module/decision:
+```
+1. Check if flows/[type]-[name]/ already exists
+2. If EXISTS:
+   - Read existing documents
+   - Detect delta (new info not in existing)
+   - Append delta only (additive changes)
+   - Mark as UPDATED in mapping.md
+3. If NOT EXISTS:
+   - Create new flow
+   - Mark as CREATED in mapping.md
+```
+
+### Additive-Only Changes
+
+When updating existing flows, append "Legacy Additions" sections.
+Never overwrite existing content.
+
+### Conflict Handling
+
+If analysis contradicts existing documentation:
+```
+1. Do NOT overwrite existing
+2. Add conflict note to review.md
+3. Mark flow as NEEDS_RECONCILIATION
+4. Human must resolve
+```
+
+### Mapping Status Values
+
+| Status | Meaning |
+|--------|---------|
+| CREATED | New flow created |
+| UPDATED | Existing flow appended to |
+| UNCHANGED | Exists, no new info found |
+| CONFLICT | Analysis contradicts existing |
+
+---
+
+## Output
+
+All created/updated flows and ADRs are in **DRAFT** status:
+- Require human review
+- Listed in flows/legacy/review.md
+- After review -> approve or revise
+- Then available for /roadmap
+
+---
+
+## Resume
+
+If interrupted, /legacy reads _status.md and _graph.md to continue from frontier.
+
+---
+
+## Always
+
+- Create flows in DRAFT status only
+- Log every iteration
+- Update _graph.md as understanding grows
+- Generate review list with confidence levels
+- Never auto-approve - all items need human review
+"""

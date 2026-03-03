@@ -1,14 +1,22 @@
+---
+description: Spec-Driven Development Flow.
+---
+
+---
+description: Spec-Driven Development Flow.
+---
+
 # Spec-Driven Development Flow
 
 You are entering SDD (Spec-Driven Development) mode. Read `flows/sdd.md` for the complete flow reference.
 
-## Command: $ARGUMENTS
+## Command: {{args}}
 
 Parse the arguments to determine the action:
 
 ### `start [name]` - Start new SDD flow
 1. Create directory `flows/sdd-[name]/`
-2. Copy templates from `flows/.templates/sdd/`
+2. Copy templates from `flows/.templates/`
 3. Create `_status.md` with phase = REQUIREMENTS
 4. Begin requirements elicitation with user
 
@@ -43,7 +51,7 @@ Parse the arguments to determine the action:
 - Update `01-requirements.md` iteratively
 - Wait for explicit "requirements approved" before advancing
 
-### SPECIFICATIONS Phase  
+### SPECIFICATIONS Phase
 - Analyze codebase for affected systems
 - Design interfaces and data models
 - Document edge cases
@@ -71,3 +79,4 @@ Parse the arguments to determine the action:
 - Never skip phases or assume approval
 - When uncertain, ask rather than assume
 - Before ending session, ensure handoff notes are complete
+
