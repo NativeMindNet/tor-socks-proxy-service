@@ -224,3 +224,4 @@ docker-compose logs -f api
 
 -   **Hot Reloading:** The `api` and `node-discovery` services are configured to mount their respective Python scripts and `requirements.txt`. This allows for easier development as changes to these files will be reflected upon container restart or `uvicorn`'s hot-reloading (for the API).
 -   **Docker Socket:** The `api` service mounts `/var/run/docker.sock` to interact with the Docker daemon. Ensure your user has permissions to access this socket.
+
